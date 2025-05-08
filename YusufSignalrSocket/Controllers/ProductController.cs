@@ -13,13 +13,11 @@ namespace YusufSignalrSocket.Controllers
     {
         private readonly IHubContext<PriceHub> _hub;
         private readonly ApplicationDbContext _context;
-
         public ProductController(IHubContext<PriceHub> hub, ApplicationDbContext context)
         {
             _hub = hub;
             _context = context;
         }
-
         [HttpPut("{productId}")]
         public async Task<IActionResult> UpdatePrice(int productId, [FromBody] UpdatePriceDto dto)
         {
