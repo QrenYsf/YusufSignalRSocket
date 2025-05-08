@@ -1,0 +1,66 @@
+﻿@page
+@model IndexModel
+
+<h2>Ürün Fiyatları</h2>
+
+<ul id="productList">
+    @foreach (var product in Model.Products)
+    {
+        <div>
+            <strong>@product.Name:</strong>
+            <span id="price-@product.Id">@product.Price</span> TL
+            <button onclick="increasePriceLocally(@product.Id)">Sadece Bende +10</button>
+            <button onclick="increasePriceForAll(@product.Id)">Herkes İçin +10</button>
+        </div>
+    }
+</ul>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/7.0.5/signalr.min.js"></script>
+<script>
+    const connection = new signalR.HubConnectionBuilder()
+        .withUrl("/priceHub")
+        .build();
+
+    // Mevcut fiyatları saklama listesi
+    const currentPrices = {};
+
+    // Sayfa yüklendiğinde başlangıç fiyatlarını kaydet
+    @foreach (var product in Model.Products)
+    {
+        @:currentPrices[@product.Id] = @product.Price;
+    }
+
+    // Fiyat güncellemesini dinle
+    connection.on("PriceUpdated", (productId, newPrice) => {
+        const priceElement = document.getElementById(`price-${productId}`);
+        if (priceElement) {
+            priceElement.innerText = newPrice.toFixed(2);
+            // Yerel fiyatı güncelle
+            currentPrices[productId] = newPrice;
+        }
+    });
+
+        // 1. Sadece lokal artış
+       function increasePriceLocally(productId) {
+           const priceElement = document.getElementById(`price-${productId}`);
+           if (priceElement) {
+               const currentPrice = parseFloat(priceElement.innerText);
+               priceElement.innerText = (currentPrice + 10).toFixed(2);
+           }
+       }
+
+       // 2. Tüm kullanıcılara yayın yap
+       function increasePriceForAll(productId) {
+           const priceElement = document.getElementById(`price-${productId}`);
+           if (priceElement) {
+               const currentPrice = parseFloat(priceElement.innerText);
+               const newPrice = currentPrice + 10;
+               connection.invoke("SendPriceUpdate", productId, newPrice);
+           }
+       }
+
+    // SignalR bağlantısını başlat
+    connection.start()
+        .then(() => console.log("SignalR bağlantısı kuruldu."))
+        .catch(err => console.error("Hata:", err));
+</script>
