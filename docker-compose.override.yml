@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+  yusufsignalrsocket:
+    ports:
+      - "5010:80"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - DOTNET_USE_POLLING_FILE_WATCHER=1
+    volumes:
+      - F:/Programming/YusufSignalrSocket:/app  # Windows dosya yolu, gerekiyorsa ayarla
+
+  mongodb-init:
+    image: mongo:5.0
+    depends_on:
+      mongodb-primary:
+        condition: service_healthy
+    entrypoint: >
+      bash -c "
+      echo 'Initiating replica set...';
+      sleep 5;
+      mongosh --host mongodb-primary:27017 --eval '
+        rs.initiate({
+          _id: \"rs0\",
+          members: [{ _id: 0, host: \"mongodb-primary:27017\" }]
+        });
+      ';
+      "
+    restart: "no"
+
+volumes:
+  mongodb_data:
