@@ -1,8 +1,13 @@
-﻿namespace YusufSignalrSocket.Models
+﻿using MongoDB.Bson;
+using MongoDB.Bson.Serialization.Attributes;
+
+namespace YusufSignalrSocket.Models
 {
     public class Product
     {
-        public int Id { get; set; }
+        [BsonId]
+        [BsonRepresentation(BsonType.ObjectId)]
+        public string Id { get; set; }
         public string Name { get; set; }
         public decimal Price { get; set; }
     }

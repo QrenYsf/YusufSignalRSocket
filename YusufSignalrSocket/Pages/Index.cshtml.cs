@@ -1,23 +1,16 @@
 using Microsoft.AspNetCore.Mvc.RazorPages;
-using YusufSignalrSocket.Data;
 using YusufSignalrSocket.Models;
-
-namespace YusufSignalrSocket.Pages
+using YusufSignalrSocket.Services;
+public class IndexModel : PageModel
 {
-    public class IndexModel : PageModel
+    private readonly IProductService _productService;
+    public IndexModel(IProductService productService)
     {
-        private readonly ApplicationDbContext _context;
-
-        public IndexModel(ApplicationDbContext context)
-        {
-            _context = context;
-        }
-
-        public List<Product> Products { get; set; }
-
-        public void OnGet()
-        {
-            Products = _context.Products.ToList();
-        }
+        _productService = productService;
+    }
+    public List<Product> Products { get; set; }
+    public async Task OnGetAsync()
+    {
+        Products = await _productService.GetAllAsync();
     }
 }
