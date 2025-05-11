@@ -1,66 +1,156 @@
 ﻿@page
 @model IndexModel
+@{
+    ViewData["Title"] = "Canlı Fiyat Yönetimi";
+}
 
-<h2>Ürün Fiyatları</h2>
+<div class="container">
+    <h2 class="text-center mb-4">Ürün Fiyatları</h2>
 
-<ul id="productList">
-    @foreach (var product in Model.Products)
-    {
-        <div>
-            <strong>@product.Name:</strong>
-            <span id="price-@product.Id">@product.Price</span> TL
-            <button onclick="increasePriceLocally(@product.Id)">Sadece Bende +10</button>
-            <button onclick="increasePriceForAll(@product.Id)">Herkes İçin +10</button>
-        </div>
-    }
-</ul>
+    <div id="productList" class="row">
+        @foreach (var product in Model.Products)
+        {
+            <div class="col-md-6 col-lg-4 mb-4">
+                <div class="card product-card" data-id="@product.Id">
+                    <div class="card-body">
+                        <h5 class="card-title text-truncate">@product.Name</h5>
+                        <div class="d-flex align-items-center justify-content-between mb-3">
+                            <div class="d-flex align-items-center">
+                                <span class="price-display h4 me-2" id="price-@product.Id">@product.Price.ToString("N2")</span>
+                                <span>TL</span>
+                            </div>
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button class="btn btn-sm btn-outline-primary btn-local" data-id="@product.Id">
+                                <i class="fas fa-desktop me-1"></i> Sadece Bende 10 Artır UI
+                            </button>
+                            <button class="btn btn-sm btn-warning btn-broadcast" data-id="@product.Id">
+                                <i class="fas fa-broadcast-tower me-1"></i> Herkeste 10 Artır UI
+                            </button>
+                            <button class="btn btn-sm btn-success btn-persist" data-id="@product.Id">
+                                <i class="fas fa-database me-1"></i> Herkeste 10 Artır UI + DB
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+</div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/7.0.5/signalr.min.js"></script>
-<script>
-    const connection = new signalR.HubConnectionBuilder()
-        .withUrl("/priceHub")
-        .build();
 
-    // Mevcut fiyatları saklama listesi
-    const currentPrices = {};
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
 
-    // Sayfa yüklendiğinde başlangıç fiyatlarını kaydet
-    @foreach (var product in Model.Products)
-    {
-        @:currentPrices[@product.Id] = @product.Price;
+<style>
+    .product-card {
+        transition: all 0.3s ease;
+        height: 100%;
     }
 
-    // Fiyat güncellemesini dinle
-    connection.on("PriceUpdated", (productId, newPrice) => {
-        const priceElement = document.getElementById(`price-${productId}`);
-        if (priceElement) {
-            priceElement.innerText = newPrice.toFixed(2);
-            // Yerel fiyatı güncelle
-            currentPrices[productId] = newPrice;
+        .product-card:hover {
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
         }
+
+    .price-display {
+        color: #2c3e50;
+        font-weight: 700;
+    }
+
+    .d-grid.gap-2 .btn {
+        width: 100%;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .card-title {
+        max-width: 100%;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+</style>
+
+<script>    
+    const connection = new signalR.HubConnectionBuilder()
+        .withUrl("/priceHub")
+        .withAutomaticReconnect()
+        .configureLogging(signalR.LogLevel.Information)
+        .build();
+            
+    async function startConnection() {
+        try {
+            await connection.start();
+            console.log("SignalR bağlantısı başarılı!");
+        } catch (err) {
+            console.error("SignalR bağlantı hatası:", err);
+            setTimeout(startConnection, 5000);
+        }
+    }
+    
+    connection.on("PriceUpdated", (productId, newPrice) => {
+        updatePriceDisplay(productId, newPrice);
     });
+    
+    function updatePriceDisplay(productId, price) {
+        const element = document.getElementById(`price-${productId}`);
+        if (element) {
+            element.textContent = price.toFixed(2);
+            element.classList.add('text-success');
+            setTimeout(() => element.classList.remove('text-success'), 1000);
+        }
+    }
+    
+    document.addEventListener("DOMContentLoaded", () => {
+        
+        //Button Only Me
+        document.querySelectorAll('.btn-local').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const productId = e.target.closest('.product-card').dataset.id;
+                const priceElement = document.getElementById(`price-${productId}`);
+                const newPrice = (parseFloat(priceElement.textContent) + 10).toFixed(2);
+                priceElement.textContent = newPrice;
+            });
+        });
 
-        // 1. Sadece lokal artış
-       function increasePriceLocally(productId) {
-           const priceElement = document.getElementById(`price-${productId}`);
-           if (priceElement) {
-               const currentPrice = parseFloat(priceElement.innerText);
-               priceElement.innerText = (currentPrice + 10).toFixed(2);
-           }
-       }
+        // Send All
+        document.querySelectorAll('.btn-broadcast').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                const productId = e.target.closest('.product-card').dataset.id;
+                const priceElement = document.getElementById(`price-${productId}`);
+                const newPrice = parseFloat(priceElement.textContent) + 10;
 
-       // 2. Tüm kullanıcılara yayın yap
-       function increasePriceForAll(productId) {
-           const priceElement = document.getElementById(`price-${productId}`);
-           if (priceElement) {
-               const currentPrice = parseFloat(priceElement.innerText);
-               const newPrice = currentPrice + 10;
-               connection.invoke("SendPriceUpdate", productId, newPrice);
-           }
-       }
+                try {
+                    await connection.invoke("SendPriceUpdate", productId, newPrice);
+                } catch (err) {
+                    alert("Yayın gönderilemedi: " + err);
+                }
+            });
+        });
 
-    // SignalR bağlantısını başlat
-    connection.start()
-        .then(() => console.log("SignalR bağlantısı kuruldu."))
-        .catch(err => console.error("Hata:", err));
+        // Send All + Db
+        document.querySelectorAll('.btn-persist').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                const productId = e.target.closest('.product-card').dataset.id;
+                const priceElement = document.getElementById(`price-${productId}`);
+                const newPrice = parseFloat(priceElement.textContent) + 10;
+
+                try {
+                    const response = await fetch(`/api/product/${productId}`, {
+                        method: "PUT",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ newPrice })
+                    });
+
+                    if (!response.ok) {
+                        throw new Error("DB güncelleme başarısız");
+                    }
+                } catch (err) {
+                    alert("Güncelleme başarısız: " + err);
+                }
+            });
+        });
+    });  
+    startConnection();
 </script>

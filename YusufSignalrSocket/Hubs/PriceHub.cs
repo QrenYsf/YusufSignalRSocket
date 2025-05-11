@@ -4,7 +4,7 @@ namespace YusufSignalrSocket.Hubs
 {
     public class PriceHub : Hub
     {
-        public async Task SendPriceUpdate(int productId, decimal newPrice)
+        public async Task SendPriceUpdate(string productId, decimal newPrice)
         {
             await Clients.All.SendAsync("PriceUpdated", productId, newPrice);
         }
